@@ -18,9 +18,16 @@ from allSectors import getSector
 import jsonlines
 import xlsxwriter
 
+jdir = os.environ['USERPROFILE'] + os.path.join("\\Saved Games\\Frontier Developments\\Elite Dangerous\\journal.*.log")
+
+
 # C:\Users\Max\Saved Games\Frontier Developments\Elite Dangerous
 # journal_dir = os.path.join("c:/", "Users", "Saved Games", "Frontier Developments", "Elite Dangerous", "journal.*.log")
-jdir = os.path.join("C:\\Users\\Max\\Saved Games\\Frontier Developments\\Elite Dangerous\\journal.*.log")
+# jdir = os.path.join("C:\\Users\\Max\\Saved Games\\Frontier Developments\\Elite Dangerous\\journal.*.log")
+
+
+# print(jdir)
+# print(juserprofile)
 # journal_dir = config.get('journaldir') or config.default_journal_dir
 # out_dir = config.get('outdir') or config.default_out_dir
 # outfilename = 'all_' + time.strftime("%Y-%m-%d" + "T" + "%H-%M-%S" + "Z", gmtime()) + ".csv"
