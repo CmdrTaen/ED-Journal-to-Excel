@@ -236,157 +236,10 @@ sectors = workbook.add_worksheet('sectors')
 boxels = workbook.add_worksheet('boxels')
 systems = workbook.add_worksheet('systems')
 objects = workbook.add_worksheet('objects')
-rings = workbook.add_worksheet('rings')
 helper = workbook.add_worksheet('helper')
-
-# print(jdir)
-
-
-
-
-# jdir = glob.glob('C:\\Users\\Max\\Saved Games\\Frontier Developments\\Elite Dangerous')
 
 row = 0
 col = 0
-
-def object_parse(line):
-    matvalues = list()
-    atmosvalues = list()
-    remainder = list()
-    objectvalues = list()
-    orbitvalues = list()
-
-    # alltab = table_bodies_header + table_orbit + table_atmosphere + table_materials
-    if isinstance(line, dict):
-        for getkeys in line.keys():
-            if getkeys != "Materials" and getkeys != "Rings" and getkeys != "AtmosphereComposition":
-                dict_objects[getkeys] = line.get(getkeys)
-            if getkeys == "Materials":
-                matkeys = line.get(getkeys)
-                ## Collect the materials as they were recorded in the journals prior to
-                ## 2017-04-11 (2.2 release? Or was it 2.3??)
-                if isinstance(line.get(getkeys), dict):
-                    for key2 in table_materials:
-                        if key2 not in matkeys:
-                            matvalues.append("")
-                        else:
-                            value = str(matkeys[key2])
-                            matvalues.append(value)
-                elif isinstance(line.get(getkeys), list):
-                    materials = list(table_materials)
-                    for i in range(len(list(table_materials))):
-                        for j in range(len(list(matkeys))):
-                            if materials[i] == matkeys[j]['Name']:
-                                matvalues.append(matkeys[j]['Percent'])
-                                mathelper = matkeys[j]['Name']
-                        if materials[i] != mathelper:
-                            matvalues.append("")
-            elif isinstance(line.get(getkeys), list):
-                ## Yes, this isn't terribly elegant. I'll improve it as
-                ## I get better at working in Python.
-                ringkeys = line.get(getkeys)
-                if getkeys == "AtmosphereComposition":
-                    atmokeys = line.get(getkeys)
-                    atmosphere = list(table_atmosphere)
-                    atmocount = 0
-                    for i in range(len(list(table_atmosphere))):
-                        if atmosphere[i] == atmokeys[atmocount]['Name']:
-                            atmosvalues.append(atmokeys[atmocount]['Percent'])
-                            if len(list(atmokeys)) == 1:
-                                atmocount = atmocount
-                            elif len(list(atmokeys)) == atmocount + 1:
-                                atmocount = atmocount
-                            else:
-                                atmocount = atmocount + 1
-                        else:
-                            atmosvalues.append("")
-            else:
-                remainder.append(line.get(getkeys))
-
-            # Check if the object lacks atmosphere, materials, or rings
-            #  and fill in the blanks
-            if atmosvalues == []:
-                for key2 in table_atmosphere:
-                    if key2 not in atmosvalues:
-                        atmosvalues.append("")
-            if matvalues == []:
-                for key2 in table_materials:
-                    if key2 not in matvalues:
-                        matvalues.append("")
-
-            # Get the object values and place them in the correct location
-            # unless they don't exist, in which case fillin the blanks
-            objects = line.get(getkeys)
-            objflag = False
-            objflag2 = False
-            boxelvalues = list()
-            for objkey in table_body:
-                ### It might be simplest to just do these individually, rather than a fancy loop... at least initially. Also easier to organize.
-                # print(objkey,objects)
-                if objkey in objects:
-                    objvalue = str(objects[objkey])
-                    if objkey =="StellarMass":
-                        masskg = float(objvalue)
-                        masskg = masskg * 1.9891E+21
-                        objvalue = masskg
-                    elif objkey == "MassEM":
-                        masskg = float(objvalue)
-                        masskg = masskg * 5.9722E+15
-                        objvalue = masskg
-                    objectvalues.append(masskg)
-                    # print(range(len(objkey)),type(objkey),objkey)
-
-                    if objkey == "StarType":
-                        objectvalues.append("Star")
-                        objectvalues.append("")
-                    elif objkey == "PlanetClass":
-                        objectvalues.append("Planet")
-
-                    # if objkey == "StellarMass" or objkey == "StarType" or objkey == "PlanetClass":
-                    #     objflag = True
-                    #     if objkey == "StarType":
-                    #         objectvalues.append("Star")
-                    #         objectvalues.append("")
-                    #         objflag2 = True
-                    #     else:
-                    #         objectvalues.append("")
-                    #     objectvalues.append(objvalue)
-
-                    else:
-                        objectvalues.append(objvalue)
-
-                else:
-                    if objflag is True:
-                        objflag = False
-                    elif objflag2 is True:
-                        objflag2 = False
-                    elif objkey == "StarType":
-                        objectvalues.append("Planet")
-                    else:
-                        objectvalues.append(objkey)
-
-            for objkey in table_orbit:
-                if objkey not in objects:
-                    orbitvalues.append("")
-                else:
-                    objvalue = str(objects[objkey])
-                    orbitvalues.append(objvalue)
-            for objkey in table_body:
-                if objkey not in objects:
-                    boxelvalues.append("")
-                else:
-                    objvalue = str(objects[objkey])
-
-            # Print out the rows of data
-
-            allval = objectvalues + orbitvalues + atmosvalues + matvalues
-            #
-            # print(*allval, sep=',')
-            ## Keeping this line for simple testing.
-            # print(*allval,sep=',')
-            return allval
-
-
 
 def search(values, searchFor):
     for k in values:
@@ -403,13 +256,13 @@ def objectClass(objtype, object):
             return "Main Sequence"
         elif re.search("L$|T$|Y$", object):
             return "Brown Dwarf"
-        elif re.search("H$|N$|D[A|B|C]", object):
+        elif re.search("H$|N$|D$|D[A|B|C|Q]|SupermassiveBlackHole$", object):
             return "Remnant"
         elif re.search("TTS$|AeBe$", object):
             return "Proto"
-        elif re.search("S$|C[J|N|]$", object):
+        elif re.search("C$|S$|C[J|N|]$", object):
             return "Carbon"
-        elif re.search("W[C|N|O]", object):
+        elif re.search("W$|W[C|N|O]", object):
             return "Wolf-Rayet"
     elif objtype == "Planet":
         if re.search("[G|g]as", object):
@@ -418,7 +271,6 @@ def objectClass(objtype, object):
             return "Terrestrial"
     else:
         pass
-
 
 def volcanoRegex(volcanism):
     volcano = list()
@@ -429,26 +281,20 @@ def volcanoRegex(volcanism):
         volcano.append(volcanoval.group(2))
         volcano.append(volcanoval.group(3))
 
-    # print("post-regex",volcano)
     return volcano
 
 def atmosphereRegex(atmosphereIN):
     atmosphere = list()
-    # print("atmosphereIN:",atmosphereIN)
 
-    # regex = r"([hot|]+)\s?([/^thick/|/^thin/+)?\s?(/^ammonia/|/^argon/|/^neon/|/^helium/|/^methane/|/^nitrogen/|/^oxygen/|/^carbon dioxide/|/^silicate vapour/|/^water/+)?\s?(rich+)? atmosphere$"
     regex = r"(hot+|)?\s?(thick+|thin+|)?\s?(ammonia+|argon+|neon+|helium+|methane+|nitrogen+|oxygen+|metallic vapour+|sulfur dioxide+|sulphur dioxide+|carbon dioxide+|silicate vapour+|water+|)?\s?(rich+|)? atmosphere$"
-    # regex = r"(hot+)?/s?([thin|thick]+)?\s?([ammonia|silicate vapour|carbon dioxide|metallic|water|rocky]+)?\s\?(rich+)?"
+
     atmospherevals = re.finditer(regex,atmosphereIN)
-    # print(enumerate(volatmvals),volatmvals,regex,atmolcanism)
     for atmosphereNum, atmosphereVal in enumerate(atmospherevals):
-        # print("atmosphereVals",atmosphereVal.group(1),atmosphereVal.group(2),atmosphereVal.group(3),atmosphereVal.group(4))
         atmosphere.append(atmosphereVal.group(1))
         atmosphere.append(atmosphereVal.group(2))
         atmosphere.append(atmosphereVal.group(3))
         atmosphere.append(atmosphereVal.group(4))
 
-    # print("post-regex",atmosphere)
     return atmosphere
 
 def systemRegex(boxelname):
@@ -457,15 +303,12 @@ def systemRegex(boxelname):
     if re.search("\s[A-Za-z]{2}-[A-Za-z]\s",boxelname):
         if re.search("\w\d+\-\d+", boxelname):
             regex = r"(([\w\s'.()/-]+) ([A-Za-z]{2}-[A-Za-z]) ([a-h])(\d+))-(\d+)"
-        # elif re.search("\w\-\d+", boxelname):
         else:
             regex = r"(([\w\s'.()/-]+) ([A-Za-z]{2}-[A-Za-z]) ([a-h]))()(\d+)"
 
         boxelvals.append(boxelname)
-        # objvalue = re.match("[\w\s'.()/-]+ [A-Za-z]{2}-[A-Za-z] [a-h] \d+",objvalue)
         boxels = re.finditer(regex, boxelname)
         for boxelNum, boxel in enumerate(boxels):
-            # boxelNum = len(dict_boxels) + 1
 
             boxelname = boxel.group(1)
             boxelvals.append(boxelname)
@@ -481,11 +324,6 @@ def systemRegex(boxelname):
             boxelvals.append(boxelname)
             boxelname = ""
             boxelvals.append(boxelname)
-            # print(boxelNum,"boxelnum",boxelvals)
-
-
-        # if len(boxelname) > 1:
-        # print(boxelvals)
 
     else:
         actualhasector = getSector(sysX, sysY, sysZ)
@@ -505,7 +343,6 @@ def systemRegex(boxelname):
         boxelname = "x"
         boxelvals.append(boxelname)
 
-    # print(boxelvals)
     return boxelvals
 
     ##### Helium GG basically non-existant within 6000 or so ly of galactic centre. What else stops at around that point?
@@ -543,18 +380,13 @@ for filename in glob.glob(jdir):
                     pass
 
             if line.get("event", None) == "FSDJump" or line.get("event", None) == "Location":
-                # print(filename)
-                # print("Line is",line["event"],type(line))
 
                 sectorvalues = list()
                 boxelvalues = list()
                 systemvalues = list()
                 boxelcontents = list()
-                matvalues = list()
 
                 boxelvals = systemRegex(line["StarSystem"])
-                # print("The boxelvals var: ",boxelvals)
-                # print(line["StarPos"])
                 syscoordinates = line["StarPos"]
 
                 ### Actual System Coordinates
@@ -573,10 +405,7 @@ for filename in glob.glob(jdir):
 
                 boxelname_obj = ""
 
-                # print("lenboxelvals is: ",len(boxelvals))
                 if len(boxelvals) > 1:
-                    # print(boxelvals[0])
-                    # print("boxelvals 1 is ",boxelvals)
                     boxelname_obj = boxelvals[1]
                     if boxelvals[2] not in dict_sectors:
                         dict_sectors[boxelvals[2]] = {}
@@ -647,7 +476,7 @@ for filename in glob.glob(jdir):
                         dict_sectors[boxelvals[2]]["boxels"][boxelvals[1]]
 
                 else:
-                    # Here is where we work out the actual sector for named systems
+                    # Here is where we work out the actual sector for named systems... it's a work in progress.
                     # print(systemvalues[0])
                     # print("Hand Authored:",boxelvals)
                     actualhasector = getSector(sysX,sysY,sysZ)
@@ -655,8 +484,13 @@ for filename in glob.glob(jdir):
 
                     HAsystem = boxelvals[0]
 
+            if line.get("event", None) == "Scan" and "Cluster" not in line.get("BodyName"):
+                if "Cluster" in line.get("BodyName"):
+                    print("Clusterfuck in ",line.get("BodyName"))
+                if "Belt" in line.get("BodyName"):
+                    print("Belt in ",line.get("BodyName"))
 
-            if line.get("event", None) == "Scan":
+
 
                 objectvalues = list()
                 ringvalues = list()
@@ -759,11 +593,12 @@ for filename in glob.glob(jdir):
                 else:
                     for gasType in table_atmosphere:
                         dict_atmosphere[gasType] = ""
+
                 dict_objects[bodyname]["Main"] = dict_singleobject
                 dict_objects[bodyname]["Atmosphere"] = dict_atmosphere
+
                 if "Rings" in line:
                     dict_rings = dict()
-                    # print(type(line["Rings"]),line["Rings"])
                     for singlering in line["Rings"]:
                         one_ring = dict()
                         for key in table_body:
@@ -771,16 +606,26 @@ for filename in glob.glob(jdir):
                                 pass
                             else:
                                 one_ring[key] = ""
-                        # one_ring["BodyName"] = singlering["Name"]
                         one_ring["timestamp"] = dict_singleobject["timestamp"]
                         one_ring["BoxelName"] = dict_singleobject["BoxelName"]
                         one_ring["barycentre"] = dict_singleobject["BodyID"]
-                        one_ring["oType"] = "Accretion"
+
+                        ringclass = singlering["RingClass"].replace("eRingClass_","")
+                        # ringclass = ringclass.strip("eRingClass_")
+
+
                         if "Belt" in singlering["Name"]:
+                            one_ring["oType"] = "Belt"
+                            ringclass = "Belt - " + ringclass
                             one_ring["oClass"] = "Belt"
                         else:
-                            one_ring["oClass"] = "Ring"
-                        one_ring["Object"] = singlering["RingClass"]
+                            one_ring["oType"] = dict_singleobject["oType"]
+                            ringclass = "Ring - " + ringclass
+                            one_ring["oClass"] = dict_singleobject["oClass"]
+
+
+
+                        one_ring["Object"] = ringclass
                         one_ring["MassMT"] = singlering["MassMT"]
                         one_ring["InnerRadius"] = singlering["InnerRad"]
                         one_ring["Radius"] = singlering["OuterRad"]
@@ -798,28 +643,19 @@ for filename in glob.glob(jdir):
                         for mat in table_materials:
                             if mat not in matkeys:
                                 dict_mats[mat] = ""
-                                # matvalues.append("")
                             else:
                                 matvalue = str(matkeys[mat])
                                 dict_mats[mat] = matvalue
-                                # matvalues.append(value)
                     elif isinstance(line.get("Materials"), list):
-                        # print(line.get("Materials"))
                         materials = list(table_materials)
                         for i in range(len(list(table_materials))):
                             for j in range(len(list(matkeys))):
-                                # print(matkeys[j]["Name"],"and",materials[i])
                                 if materials[i] == matkeys[j]['Name']:
                                     dict_mats[materials[i]] = matkeys[j]['Percent']
-                                    # print(dict_mats[materials[i]])
-                                    # matvalues.append(matkeys[j]['Percent'])
                                     mathelper = matkeys[j]['Name']
-                            print(materials[i],mathelper)
                             if materials[i] != mathelper:
                                 dict_mats[materials[i]] = ""
-                            #     # matvalues.append("")
                     dict_objects[bodyname]["Materials"] = dict_mats
-                    print(dict_mats)
 
 row = 0
 col = 0
@@ -854,7 +690,6 @@ for objkey in dict_objects:
         atmosphereAttributes = list(dict_objects[objkey]["Atmosphere"].values())
         objectattributes = objectattributes + atmosphereAttributes
     matsline = dict_objects[objkey].get("Materials")
-    print(matsline)
     if matsline == None:
         pass
     else:
@@ -893,17 +728,10 @@ for key in sorted(dict_sectors):
                         systems.write(sysrow,syscol,coordinates)
                         syscol += 1
                 else:
-                    # print("System items type: ",type(items))
                     systems.write(sysrow,syscol,items)
                     syscol += 1
-            # print("This is row number {}".format(objrow))
             # systems.write_formula(sysrow,syscol,'=IFERROR(AVERAGEIFS(objects!AZ$2:AZ${},objects!$A$2:$A${},$A{}&"*",objects!$H$2:$H${},"Gas Giant"),"")'.format(objrow,objrow,sysrow+1,objrow))
             sysrow += 1
-        # lastBoxcol = len((*boxelinfo)) + 2
         boxels.write_formula(boxrow,lastBoxcol,'=IFERROR(AVERAGEIFS(objects!AZ$2:AZ${},objects!$A$2:$A${},$A{}&"*",objects!$H$2:$H${},"Gas Giant"),"")'.format(objrow,objrow,boxrow+1,objrow))
-
-
-
-#=IFERROR(AVERAGEIFS(objects!AY$2:AY$51531,objects!$A$2:$A$51531,$B2&"*",objects!$G$2:$G$51531,"Gas Giant"),"")
 
 workbook.close()
