@@ -6,13 +6,16 @@ import math
 import re
 import jsonlines
 import xlsxwriter
+from xlsxwriter.utility import xl_col_to_name
 
 # from glob import glob
 
-from edtslib import system
+# from edtslib import system
 from allSectors import getSector
 from formulas import helper_formulas
 from formulas import table_stars
+from formulas import object_formulas
+
 
 # from time import gmtime
 # from string import ascii_uppercase
@@ -86,9 +89,11 @@ table_body = (
     "SystemName",
     # "Remainder",
     "BoxelName",
+    "BoxelCode",
     "oType",
     "oClass",
     "Object",
+    "Ring",
     # "objCorrected",
     # "Spectral",
     "MassMT",
@@ -114,7 +119,7 @@ table_body = (
     "TerraformState",
     "Landable",
     "TidalLock",
-    "isItHA",
+    # "isItHA",
     "Volcanism",
     "vLevel",
     "vMaterial",
@@ -208,7 +213,6 @@ table_sectors = (
 
 table_boxels = (
     "BoxelName",
-    "",
     "BoxX",
     "BoxY",
     "BoxZ",
@@ -258,6 +262,16 @@ table_gps = (
     # "Filename"
 )
 
+### Convert formulas to show proper Excel column locations
+
+def header2column(oldFormula):
+    newFormula = oldFormula
+    for columnHeader in re.findall("\$(\w+)", newFormula):
+        for column in [column for column, columnName in enumerate(table_body) if columnName == columnHeader]:
+            newcolumnHeader = xl_col_to_name(column) + ":$" + xl_col_to_name(column)
+            newFormula = newFormula.replace(columnHeader, newcolumnHeader)
+    return newFormula
+
 ### Coordinates for the lowest left corner of the lowest leftmost sector that matters
 
 galaxyX = int(-44865)
@@ -270,16 +284,86 @@ workbook = xlsxwriter.Workbook('journal.xlsx', {'strings_to_numbers': True})
 
 main = workbook.add_worksheet('main')
 main.set_column("A:A",26)
-main.write_row(0,0,("Object Type","Count","More stats coming later"))
 mainRow = 1
 main.freeze_panes(1,1)
+
+
+main.write(0,0,"Object Type") # write 0,col,header
+# mainRow += 1
 for mainObj in table_stars:
-    # print(mainObj)
-    main.write(mainRow,0,mainObj)
-    main.write_formula(mainRow,1,r'COUNTIF(objects!$I:$I,$A{})'.format(mainRow+1))
-    # main.write(mainRow,3,r'=MIN(IF(objects!I:I=A{},objects!M:M))'.format(mainRow+1))
-    # main.write(mainRow,4,r'=MAX(IF(objects!I:I=A{},objects!M:M))'.format(mainRow+1))
-    mainRow+=1
+    mainCol = 0
+    main.write(mainRow,mainCol,mainObj) # write row,col,objectname
+
+    # print(mainRow,mainCol,mainObj)
+    for formulas in object_formulas:
+        mainCol += 1
+        main.write(0,mainCol,formulas["FormulaType"])
+        main.write_array_formula(mainRow, mainCol, mainRow, mainCol,header2column(formulas["default"]).format(mainRow+1))
+
+        print(formulas["FormulaType"],header2column(formulas["default"]))
+
+        if "(Terraformable)" in mainObj:
+            main.write_array_formula(mainRow, mainCol, mainRow, mainCol,header2column(formulas["terraformable"]).format(mainRow))
+        if "(Landable)" in mainObj:
+            if mainObj == "Icy body (Landable)" or mainObj == "Rocky ice body (Landable)":
+                main.write_array_formula(mainRow, mainCol, mainRow, mainCol, header2column(formulas["landable"]).format(mainRow))
+            else:
+                main.write_array_formula(mainRow, mainCol, mainRow, mainCol, header2column(formulas["landable"]).format(mainRow-1))
+
+
+    # print(max(table_body,key=))
+    mainRow += 1
+
+
+# for mainObj in table_stars:
+#     print(mainObj)
+#     for formulas in object_formulas:
+#         print(formulas["FormulaType"],"1",formulas["default"])
+#         print(header2column(formulas["default"]))
+        # newFormula = formulas["default"]
+        # for columnHeader in re.findall("\$(\w+)", newFormula):
+        #     for column in [column for column, columnName in enumerate(table_body) if columnName == columnHeader]:
+        #         newcolumnHeader = xl_col_to_name(column) + ":$" + xl_col_to_name(column)
+        #         newFormula = newFormula.replace(columnHeader, newcolumnHeader)
+        # print(formulas["FormulaType"],"2",newFormula)
+
+# testFormula = r'COUNTIFS(objects!$Object,$A{0:d})'
+#
+# print("1",testFormula)
+# for columnHeader in re.findall("\$(\w+)",testFormula):
+#     print(columnHeader)
+#     for column in [column for column,columnName in enumerate(table_body) if columnName == columnHeader]:
+#         newcolumnHeader = xl_col_to_name(column)+":$"+xl_col_to_name(column)
+#         print(xl_col_to_name(column))
+#         print(newcolumnHeader)
+#         testFormula = testFormula.replace(columnHeader,newcolumnHeader)
+# print("2",testFormula)
+# columnHeader = re.findall("\[(\w+)]",testFormula)
+# print("The columnheader is ",columnHeader)
+#
+# for columnHead in columnHeader:
+#     print(columnHead)
+#     columnLetter = list()
+#     for column in [column for column,columnName in enumerate(table_body) if columnName == columnHead]:
+#         columnLetter.append(xl_col_to_name(column))
+        # print(xl_col_to_name(column))
+
+# newFormula = re.sub(columnHeader,testFormula,columnLetter)
+# print(testFormula)
+# print(newFormula)
+
+# print("The columnheader is ",columnHeader.group(1))
+# # for column in table_body:
+# #     if columnHeader == column:
+# #         columnLetter =
+# print(table_body.count(columnHeader.group(1)))
+# formulaColumn = xl_col_to_name(table_body.count(columnHeader.group(1)))
+# print(formulaColumn)
+
+# for column in [column for column,columnName in enumerate(table_body) if columnName == columnHeader.group(1)]:
+#     print(xl_col_to_name(column))
+
+
 
 
 sectors = workbook.add_worksheet('sectors')
@@ -423,7 +507,8 @@ def systemRegex(boxelname):
     else:
         # print("HA boxel is",boxelname)
         # print("But PG it's called: ",system.from_name(boxelname).pg_name)
-        PGName = system.from_name(boxelname).pg_name
+        # PGName = system.from_name(boxelname).pg_name
+        PGName = "idunnowhattocallit td-d d"
 
         if re.search("\w\d+\-\d+", PGName):
             regex = r"(([\w\s'.()/-]+) ([A-Za-z]{2}-[A-Za-z]) ([a-h])(\d+))-(\d+)"
@@ -685,6 +770,11 @@ for filename in glob.glob(jdir):
                                 dict_singleobject["BoxelName"] = boxelvals[1]
                             else:
                                 dict_singleobject["BoxelName"] = ""
+                        elif objectkey == "BoxelCode":
+                            if len(boxelvals) > 1:
+                                dict_singleobject["BoxelCode"] = boxelvals[4]
+                            else:
+                                dict_singleobject["BoxelCode"] = ""
                         elif objectkey == "SystemName":
                             dict_singleobject["SystemName"] = boxelvals[0]
                         elif objectkey == "Remainder":
@@ -775,11 +865,11 @@ for filename in glob.glob(jdir):
                             else:
                                 dict_singleobject["barycentre"] = ""
 
-                        elif objectkey == "isItHA":
-                            if boxelvals[7] == "x":
-                                dict_singleobject["isItHA"] = "x"
-                            else:
-                                dict_singleobject["isItHA"] = ""
+                        # elif objectkey == "isItHA":
+                        #     if boxelvals[7] == "x":
+                        #         dict_singleobject["isItHA"] = "x"
+                        #     else:
+                        #         dict_singleobject["isItHA"] = ""
 
                         elif objectkey == "Volcanism":
                             if objectkey in line and line[objectkey] is not "":
@@ -832,6 +922,21 @@ for filename in glob.glob(jdir):
                                 dict_singleobject["aElements"] = ""
                                 dict_singleobject["aRich"] = ""
 
+                        elif objectkey == "Ring":
+                            if "Rings" in line:
+                                if "Belt" in line["Rings"][0]["Name"]:
+                                    # print("It's a belt!")
+                                # print(line["Rings"])
+                                # dict_singleobject["Ring"] = "x"
+                                    dict_singleobject["Ring"] = ""
+                                elif "Ring" in line["Rings"][0]["Name"]:
+                                    # print("It's a RING!!!!!!")
+                                    dict_singleobject["Ring"] = "x"
+                                else:
+                                    dict_singleobject["Ring"] = ""
+                            else:
+                                dict_singleobject["Ring"] = ""
+
                         elif objectkey not in line and objectkey != "BoxelName" and objectkey is not "isItHA" and objectkey is not "Density" and objectkey is not "Remainder" and objectkey is not "Mass" and objectkey is not "Rings" and objectkey is not "Ice"and objectkey is not "Rock"and objectkey is not "Metal" and objectkey is not "vLevel" and objectkey is not "vMaterial" and objectkey is not "vType" and objectkey is not "aTemp" and objectkey is not "aDensity" and objectkey is not "aElements" and objectkey is not "aRich":
                             # print(dict_singleobject["Ice"])
                             dict_singleobject[objectkey] = ""
@@ -872,10 +977,11 @@ for filename in glob.glob(jdir):
                                 one_ring[key] = ""
                         one_ring["timestamp"] = dict_singleobject["timestamp"]
                         one_ring["BoxelName"] = dict_singleobject["BoxelName"]
+                        one_ring["BoxelCode"] = dict_singleobject["BoxelCode"]
                         one_ring["SystemName"] = dict_singleobject["SystemName"]
                         # one_ring["Remainder"] = dict_singleobject["Remainder"]
                         one_ring["barycentre"] = dict_singleobject["BodyID"]
-                        one_ring["IsItHA"] = dict_singleobject["isItHA"]
+                        # one_ring["IsItHA"] = dict_singleobject["isItHA"]
 
                         ringclass = singlering["RingClass"].replace("eRingClass_","")
                         if ringclass == "MetalRich":
@@ -1034,5 +1140,7 @@ for sector in sorted(dict_sectors):
 
         # systems.write_formula(sysrow,syscol,'=IFERROR(AVERAGEIFS(objects!AZ$2:AZ${},objects!$A$2:$A${},$A{}&"*",objects!$H$2:$H${},"Gas Giant"),"")'.format(objrow,objrow,sysrow+1,objrow))
         # boxels.write_formula(boxrow,lastBoxcol,'=IFERROR(AVERAGEIFS(objects!AZ$2:AZ${},objects!$A$2:$A${},$A{}&"*",objects!$H$2:$H${},"Gas Giant"),"")'.format(objrow,objrow,boxrow+1,objrow))
+
+
 
 workbook.close()
